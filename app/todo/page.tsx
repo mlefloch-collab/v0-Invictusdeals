@@ -1,14 +1,26 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { CheckSquare, Search, Plus, Calendar, User, Clock, AlertCircle, CheckCircle } from "lucide-react"
+import { MultiSelect } from "@/components/ui/multi-select"
+import { useTheme } from "@/components/theme-provider"
+import {
+  CheckSquare,
+  Search,
+  Plus,
+  Calendar,
+  User,
+  Clock,
+  AlertCircle,
+  CheckCircle,
+  ChevronRight,
+  ChevronDown,
+} from "lucide-react"
 
-const todos = [
+const todosWithSubtasks = [
   {
     id: 1,
     title: "Review Nordic Healthcare Platform due diligence report",
@@ -21,6 +33,11 @@ const todos = [
     category: "Due Diligence",
     completed: false,
     createdDate: "2025-01-20",
+    subtasks: [
+      { id: 11, title: "Review financial statements", completed: true },
+      { id: 12, title: "Analyze market positioning", completed: false },
+      { id: 13, title: "Prepare summary report", completed: false },
+    ],
   },
   {
     id: 2,
@@ -34,6 +51,7 @@ const todos = [
     category: "Investment Committee",
     completed: false,
     createdDate: "2025-01-19",
+    subtasks: [],
   },
   {
     id: 3,
@@ -47,6 +65,7 @@ const todos = [
     category: "Communication",
     completed: true,
     createdDate: "2025-01-18",
+    subtasks: [],
   },
   {
     id: 4,
@@ -60,6 +79,7 @@ const todos = [
     category: "Portfolio Management",
     completed: false,
     createdDate: "2025-01-17",
+    subtasks: [],
   },
   {
     id: 5,
@@ -73,37 +93,53 @@ const todos = [
     category: "Partnership",
     completed: false,
     createdDate: "2025-01-16",
+    subtasks: [],
   },
 ]
 
 export default function TodoPage() {
+  const { theme } = useTheme()
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedPriority, setSelectedPriority] = useState("All")
-  const [selectedStatus, setSelectedStatus] = useState("All")
-  const [selectedOpportunity, setSelectedOpportunity] = useState("All")
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  const [selectedOpportunities, setSelectedOpportunities] = useState<string[]>([])
   const [showCompleted, setShowCompleted] = useState(true)
+  const [viewMode, setViewMode] = useState<"company" | "personal">("company")
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set())
 
-  const filteredTodos = todos.filter(
-    (todo) =>
-      todo.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (selectedPriority === "All" || todo.priority === selectedPriority) &&
-      (selectedStatus === "All" || todo.status === selectedStatus) &&
-      (selectedOpportunity === "All" ||
-        (selectedOpportunity === "Unassigned" && !todo.opportunity) ||
-        todo.opportunity === selectedOpportunity) &&
-      (showCompleted || !todo.completed),
-  )
+  const toggleTaskExpansion = (taskId: number) => {
+    const newExpanded = new Set(expandedTasks)
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId)
+    } else {
+      newExpanded.add(taskId)
+    }
+    setExpandedTasks(newExpanded)
+  }
+
+  const filteredTodos = todosWithSubtasks.filter((todo) => {
+    const matchesSearch = todo.title.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesPriority = selectedPriorities.length === 0 || selectedPriorities.includes(todo.priority)
+    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(todo.status)
+    const matchesOpportunity =
+      selectedOpportunities.length === 0 ||
+      (selectedOpportunities.includes("Unassigned") && !todo.opportunity) ||
+      (todo.opportunity && selectedOpportunities.includes(todo.opportunity))
+    const matchesCompleted = showCompleted || !todo.completed
+
+    return matchesSearch && matchesPriority && matchesStatus && matchesOpportunity && matchesCompleted
+  })
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "High":
-        return "bg-red-500/20 text-red-400 border-red-500/30"
+        return "bg-red-500/20 text-red-400"
       case "Medium":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+        return "bg-yellow-500/20 text-yellow-400"
       case "Low":
-        return "bg-green-500/20 text-green-400 border-green-500/30"
+        return "bg-green-500/20 text-green-400"
       default:
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30"
+        return "bg-gray-500/20 text-gray-400"
     }
   }
 
@@ -120,170 +156,293 @@ export default function TodoPage() {
     }
   }
 
-  const opportunities = [
-    "All",
-    "Unassigned",
-    ...Array.from(new Set(todos.filter((todo) => todo.opportunity).map((todo) => todo.opportunity))),
+  const priorityOptions = [
+    { value: "High", label: "High" },
+    { value: "Medium", label: "Medium" },
+    { value: "Low", label: "Low" },
+  ]
+
+  const statusOptions = [
+    { value: "Not Started", label: "Not Started" },
+    { value: "In Progress", label: "In Progress" },
+    { value: "Completed", label: "Completed" },
+  ]
+
+  const opportunityOptions = [
+    { value: "Unassigned", label: "Unassigned" },
+    ...Array.from(new Set(todosWithSubtasks.filter((todo) => todo.opportunity).map((todo) => todo.opportunity!))).map(
+      (opp) => ({
+        value: opp,
+        label: opp,
+      }),
+    ),
   ]
 
   return (
-    <div className="min-h-screen bg-gray-900 pt-14">
-      <div className="p-4 space-y-4">
-        <div className="mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <CheckSquare className="h-4 w-4 text-gray-400" />
-              <h1 className="text-sm font-medium text-white">To-Do</h1>
-              <span className="text-xs text-gray-400">({todos.length})</span>
+    <div className={`min-h-screen pt-14 ${theme === "light" ? "bg-gray-100" : "bg-gray-900"}`}>
+      <div className="p-8 space-y-8">
+        <div className="grid grid-cols-4 gap-8 mb-8">
+          <div
+            className={`p-8 rounded-lg cursor-pointer transition-colors ${
+              theme === "light" ? "bg-white hover:bg-gray-50 shadow-sm border-0" : "bg-gray-800 hover:bg-gray-700"
+            }`}
+            onClick={() => setSelectedStatuses([])}
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className={`text-sm ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Total Tasks</p>
+                <p className={`text-2xl font-bold ${theme === "light" ? "text-black" : "text-white"}`}>
+                  {todosWithSubtasks.length}
+                </p>
+                <p className="text-sm text-blue-400">+3 this week</p>
+              </div>
+              <CheckSquare className={`h-6 w-6 ${theme === "light" ? "text-black" : "text-white"}`} />
             </div>
-            <Button size="sm" className="h-7 text-xs bg-slate-500 hover:bg-slate-600 text-white">
-              <Plus className="h-3 w-3 mr-1" />
+          </div>
+
+          <div
+            className={`p-8 rounded-lg cursor-pointer transition-colors ${
+              theme === "light" ? "bg-white hover:bg-gray-50 shadow-sm border-0" : "bg-gray-800 hover:bg-gray-700"
+            }`}
+            onClick={() => setSelectedPriorities(["High"])}
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className={`text-sm ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>High Priority</p>
+                <p className={`text-2xl font-bold ${theme === "light" ? "text-black" : "text-white"}`}>2</p>
+                <p className="text-sm text-red-400">Urgent</p>
+              </div>
+              <AlertCircle className={`h-6 w-6 ${theme === "light" ? "text-black" : "text-white"}`} />
+            </div>
+          </div>
+
+          <div
+            className={`p-8 rounded-lg cursor-pointer transition-colors ${
+              theme === "light" ? "bg-white hover:bg-gray-50 shadow-sm border-0" : "bg-gray-800 hover:bg-gray-700"
+            }`}
+            onClick={() => setSelectedStatuses(["In Progress"])}
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className={`text-sm ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>In Progress</p>
+                <p className={`text-2xl font-bold ${theme === "light" ? "text-black" : "text-white"}`}>2</p>
+                <p className="text-sm text-yellow-400">Active</p>
+              </div>
+              <Clock className={`h-6 w-6 ${theme === "light" ? "text-black" : "text-white"}`} />
+            </div>
+          </div>
+
+          <div
+            className={`p-8 rounded-lg cursor-pointer transition-colors ${
+              theme === "light" ? "bg-white hover:bg-gray-50 shadow-sm border-0" : "bg-gray-800 hover:bg-gray-700"
+            }`}
+            onClick={() => setSelectedStatuses(["Completed"])}
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className={`text-sm ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Completed</p>
+                <p className={`text-2xl font-bold ${theme === "light" ? "text-black" : "text-white"}`}>1</p>
+                <p className="text-sm text-green-400">Done</p>
+              </div>
+              <CheckCircle className={`h-6 w-6 ${theme === "light" ? "text-black" : "text-white"}`} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-3">
+            <CheckSquare className={`h-5 w-5 ${theme === "light" ? "text-gray-600" : "text-gray-400"}`} />
+            <h1 className={`text-lg font-medium ${theme === "light" ? "text-black" : "text-white"}`}>To-Do</h1>
+            <span className={`text-sm ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
+              ({filteredTodos.length})
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`flex rounded-lg p-1 ${theme === "light" ? "bg-gray-200" : "bg-gray-800"}`}>
+              <button
+                onClick={() => setViewMode("company")}
+                className={`px-4 py-2 text-sm rounded-md transition-colors ${
+                  viewMode === "company"
+                    ? theme === "light"
+                      ? "bg-gray-900 text-white"
+                      : "bg-blue-600 text-white"
+                    : theme === "light"
+                      ? "text-gray-600 hover:text-black"
+                      : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Company
+              </button>
+              <button
+                onClick={() => setViewMode("personal")}
+                className={`px-4 py-2 text-sm rounded-md transition-colors ${
+                  viewMode === "personal"
+                    ? theme === "light"
+                      ? "bg-gray-900 text-white"
+                      : "bg-blue-600 text-white"
+                    : theme === "light"
+                      ? "text-gray-600 hover:text-black"
+                      : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Personal
+              </button>
+            </div>
+            <Button
+              size="sm"
+              className={`h-8 text-sm ${
+                theme === "light"
+                  ? "bg-gray-900 hover:bg-gray-800 text-white"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+              }`}
+            >
+              <Plus className="h-4 w-4 mr-2" />
               Add Task
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
-          <Card className="bg-gray-800">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Total</p>
-                  <p className="text-lg font-bold text-white">42</p>
-                </div>
-                <CheckSquare className="h-4 w-4 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">In Progress</p>
-                  <p className="text-lg font-bold text-white">18</p>
-                </div>
-                <Clock className="h-4 w-4 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Overdue</p>
-                  <p className="text-lg font-bold text-white">3</p>
-                </div>
-                <AlertCircle className="h-4 w-4 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Completed</p>
-                  <p className="text-lg font-bold text-white">21</p>
-                </div>
-                <CheckCircle className="h-4 w-4 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex gap-2">
+        <div className="flex gap-4 mb-8">
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-500" />
+            <Search
+              className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${theme === "light" ? "text-gray-500" : "text-gray-500"}`}
+            />
             <Input
               placeholder="Search tasks..."
-              className="pl-7 h-8 text-xs bg-gray-800 text-white placeholder-gray-500"
+              className={`pl-10 h-10 text-sm ${
+                theme === "light"
+                  ? "bg-white text-black placeholder-gray-500 border-gray-300 shadow-sm"
+                  : "bg-gray-800 text-white placeholder-gray-500 border-0"
+              }`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select
-            value={selectedOpportunity}
-            onChange={(e) => setSelectedOpportunity(e.target.value)}
-            className="w-32 h-8 text-xs bg-gray-800 text-white border border-gray-700 rounded px-2"
-          >
-            {opportunities.map((opportunity) => (
-              <option key={opportunity} value={opportunity}>
-                {opportunity}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedPriority}
-            onChange={(e) => setSelectedPriority(e.target.value)}
-            className="w-20 h-8 text-xs bg-gray-800 text-white border border-gray-700 rounded px-2"
-          >
-            <option value="All">All</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-24 h-8 text-xs bg-gray-800 text-white border border-gray-700 rounded px-2"
-          >
-            <option value="All">All</option>
-            <option value="Not Started">Not Started</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
-          </select>
+          <MultiSelect
+            options={opportunityOptions}
+            value={selectedOpportunities}
+            onChange={setSelectedOpportunities}
+            placeholder="Filter by opportunity..."
+            className="w-48"
+          />
+          <MultiSelect
+            options={priorityOptions}
+            value={selectedPriorities}
+            onChange={setSelectedPriorities}
+            placeholder="Filter by priority..."
+            className="w-32"
+          />
+          <MultiSelect
+            options={statusOptions}
+            value={selectedStatuses}
+            onChange={setSelectedStatuses}
+            placeholder="Filter by status..."
+            className="w-40"
+          />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-4">
           {filteredTodos.map((todo) => (
-            <Card key={todo.id} className={`bg-gray-800 border border-gray-700 ${todo.completed ? "opacity-75" : ""}`}>
-              <CardContent className="p-3">
-                <div className="flex items-start space-x-3">
-                  <Checkbox checked={todo.completed} className="mt-1" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex-1">
+            <div
+              key={todo.id}
+              className={`p-8 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                todo.completed ? "opacity-75" : ""
+              } ${
+                theme === "light" ? "bg-white hover:bg-gray-50 shadow-sm border-0" : "bg-gray-800 hover:bg-gray-700"
+              }`}
+            >
+              <div className="flex items-start space-x-4">
+                <Checkbox checked={todo.completed} className="mt-1" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
                         <h3
-                          className={`text-sm font-medium ${todo.completed ? "line-through text-gray-500" : "text-white"}`}
+                          className={`text-base font-medium ${
+                            todo.completed
+                              ? "line-through text-gray-500"
+                              : theme === "light"
+                                ? "text-black"
+                                : "text-white"
+                          }`}
                         >
                           {todo.title}
                         </h3>
-                        <p className="text-xs text-gray-400 mb-1">{todo.description}</p>
-                        {todo.opportunity && <p className="text-xs text-blue-400">Related to: {todo.opportunity}</p>}
+                        <Badge className={`${getPriorityColor(todo.priority)} text-sm border-0`}>{todo.priority}</Badge>
+                        {todo.subtasks && todo.subtasks.length > 0 && (
+                          <button
+                            onClick={() => toggleTaskExpansion(todo.id)}
+                            className={`transition-colors ${
+                              theme === "light" ? "text-gray-600 hover:text-black" : "text-gray-400 hover:text-white"
+                            }`}
+                          >
+                            {expandedTasks.has(todo.id) ? (
+                              <ChevronDown className="h-5 w-5" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5" />
+                            )}
+                          </button>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <Badge className={`${getPriorityColor(todo.priority)} text-xs border`}>{todo.priority}</Badge>
-                        <div className="flex items-center space-x-1">
-                          {getStatusIcon(todo.status)}
-                          <span className="text-xs text-gray-400">{todo.status}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2 text-xs">
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-gray-500" />
-                        <span className="text-gray-400">{todo.assignee}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 text-gray-500" />
-                        <span className="text-gray-400">{todo.dueDate}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <CheckSquare className="h-3 w-3 text-gray-500" />
-                        <span className="text-gray-400">{todo.category}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 text-gray-500" />
-                        <span className="text-gray-400">{todo.createdDate}</span>
-                      </div>
+                      <p className={`text-sm mb-3 ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
+                        {todo.description}
+                      </p>
+                      {todo.opportunity && <p className="text-sm text-blue-400 mb-3">Related to: {todo.opportunity}</p>}
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-4 gap-4 text-sm mb-3">
+                    <div className="flex items-center gap-2">
+                      <User className={`h-4 w-4 ${theme === "light" ? "text-gray-500" : "text-gray-500"}`} />
+                      <span className={`${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
+                        {todo.assignee}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className={`h-4 w-4 ${theme === "light" ? "text-gray-500" : "text-gray-500"}`} />
+                      <span className={`${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>{todo.dueDate}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckSquare className={`h-4 w-4 ${theme === "light" ? "text-gray-500" : "text-gray-500"}`} />
+                      <span className={`${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
+                        {todo.category}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className={`h-4 w-4 ${theme === "light" ? "text-gray-500" : "text-gray-500"}`} />
+                      <span className={`${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
+                        {todo.createdDate}
+                      </span>
+                    </div>
+                  </div>
+
+                  {expandedTasks.has(todo.id) && todo.subtasks && (
+                    <div
+                      className={`mt-4 ml-6 space-y-3 border-l-2 pl-4 ${
+                        theme === "light" ? "border-gray-300" : "border-gray-700"
+                      }`}
+                    >
+                      {todo.subtasks.map((subtask) => (
+                        <div key={subtask.id} className="flex items-center space-x-3">
+                          <Checkbox checked={subtask.completed} className="h-4 w-4" />
+                          <span
+                            className={`text-sm ${
+                              subtask.completed
+                                ? "line-through text-gray-500"
+                                : theme === "light"
+                                  ? "text-gray-700"
+                                  : "text-gray-300"
+                            }`}
+                          >
+                            {subtask.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       </div>

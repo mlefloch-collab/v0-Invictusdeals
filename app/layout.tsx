@@ -4,6 +4,8 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { Navigation } from "@/components/navigation"
+import { ThemeProvider } from "@/components/theme-provider"
+import { AIAssistant } from "@/components/ai-assistant"
 
 export const metadata: Metadata = {
   title: "DealFlow - Investment Management Platform",
@@ -28,10 +30,18 @@ html {
         `}</style>
       </head>
       <body>
-        <div className="min-h-screen bg-background">
-          <Navigation />
-          <div className="lg:ml-64">{children}</div>
-        </div>
+        <ThemeProvider defaultTheme="dark" storageKey="dealflow-theme">
+          <div className="min-h-screen bg-background">
+            <Navigation />
+            <div
+              className="transition-all duration-300 ease-in-out"
+              style={{ marginLeft: "var(--sidebar-width, 264px)" }}
+            >
+              {children}
+            </div>
+            <AIAssistant />
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   )

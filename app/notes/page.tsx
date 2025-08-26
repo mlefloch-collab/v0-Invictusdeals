@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { MultiSelect } from "@/components/ui/multi-select"
+import { useTheme } from "@/components/theme-provider"
 import { StickyNote, Search, Plus, Edit, Trash2, Pin, Calendar, User, Tag } from "lucide-react"
 
 const notes = [
@@ -81,136 +82,155 @@ const notes = [
 ]
 
 export default function NotesPage() {
+  const { theme } = useTheme()
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("All")
-  const [selectedOpportunity, setSelectedOpportunity] = useState("All")
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedOpportunities, setSelectedOpportunities] = useState<string[]>([])
   const [showPinnedOnly, setShowPinnedOnly] = useState(false)
 
-  const filteredNotes = notes.filter(
-    (note) =>
-      (note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      (selectedCategory === "All" || note.category === selectedCategory) &&
-      (selectedOpportunity === "All" ||
-        (selectedOpportunity === "Unassigned" && !note.opportunity) ||
-        note.opportunity === selectedOpportunity) &&
-      (!showPinnedOnly || note.pinned),
-  )
+  const filteredNotes = notes.filter((note) => {
+    const matchesSearch =
+      note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      note.content.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(note.category)
+    const matchesOpportunity =
+      selectedOpportunities.length === 0 ||
+      (selectedOpportunities.includes("Unassigned") && !note.opportunity) ||
+      (note.opportunity && selectedOpportunities.includes(note.opportunity))
+    const matchesPinned = !showPinnedOnly || note.pinned
 
-  const categories = ["All", ...Array.from(new Set(notes.map((note) => note.category)))]
-  const opportunities = [
-    "All",
-    "Unassigned",
-    ...Array.from(new Set(notes.filter((note) => note.opportunity).map((note) => note.opportunity))),
+    return matchesSearch && matchesCategory && matchesOpportunity && matchesPinned
+  })
+
+  const categoryOptions = Array.from(new Set(notes.map((note) => note.category))).map((cat) => ({
+    value: cat,
+    label: cat,
+  }))
+
+  const opportunityOptions = [
+    { value: "Unassigned", label: "Unassigned" },
+    ...Array.from(new Set(notes.filter((note) => note.opportunity).map((note) => note.opportunity!))).map((opp) => ({
+      value: opp,
+      label: opp,
+    })),
   ]
 
   return (
-    <div className="min-h-screen bg-gray-900 pt-14">
-      <div className="p-4 space-y-4">
-        <div className="mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <StickyNote className="h-4 w-4 text-gray-400" />
-              <h1 className="text-sm font-medium text-white">Notes</h1>
-              <span className="text-xs text-gray-400">({notes.length})</span>
+    <div className={`min-h-screen pt-14 ${theme === "light" ? "bg-gray-100" : "bg-gray-900"}`}>
+      <div className="p-8 space-y-6">
+        <div className="grid grid-cols-4 gap-6 mb-6">
+          <div
+            className={`p-8 rounded cursor-pointer transition-colors ${theme === "light" ? "bg-white border-0 shadow-sm hover:bg-gray-50" : "bg-gray-800 hover:bg-gray-700"}`}
+            onClick={() => setSelectedCategories([])}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm mb-2 ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Total Notes</p>
+                <p className={`text-3xl font-bold mb-1 ${theme === "light" ? "text-black" : "text-white"}`}>67</p>
+                <p className="text-sm text-blue-500">+5 this week</p>
+              </div>
+              <StickyNote className={`h-8 w-8 ${theme === "light" ? "text-black" : "text-white"}`} />
             </div>
-            <Button size="sm" className="h-7 text-xs bg-slate-500 hover:bg-slate-600 text-white">
-              <Plus className="h-3 w-3 mr-1" />
-              New Note
-            </Button>
+          </div>
+
+          <div
+            className={`p-8 rounded cursor-pointer transition-colors ${theme === "light" ? "bg-white border-0 shadow-sm hover:bg-gray-50" : "bg-gray-800 hover:bg-gray-700"}`}
+            onClick={() => setShowPinnedOnly(!showPinnedOnly)}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm mb-2 ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Pinned</p>
+                <p className={`text-3xl font-bold mb-1 ${theme === "light" ? "text-black" : "text-white"}`}>8</p>
+                <p className="text-sm text-yellow-500">Important</p>
+              </div>
+              <Pin className={`h-8 w-8 ${theme === "light" ? "text-black" : "text-white"}`} />
+            </div>
+          </div>
+
+          <div
+            className={`p-8 rounded cursor-pointer transition-colors ${theme === "light" ? "bg-white border-0 shadow-sm hover:bg-gray-50" : "bg-gray-800 hover:bg-gray-700"}`}
+            onClick={() => console.log("View categories")}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm mb-2 ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Categories</p>
+                <p className={`text-3xl font-bold mb-1 ${theme === "light" ? "text-black" : "text-white"}`}>12</p>
+                <p className="text-sm text-green-500">Organized</p>
+              </div>
+              <Tag className={`h-8 w-8 ${theme === "light" ? "text-black" : "text-white"}`} />
+            </div>
+          </div>
+
+          <div
+            className={`p-8 rounded cursor-pointer transition-colors ${theme === "light" ? "bg-white border-0 shadow-sm hover:bg-gray-50" : "bg-gray-800 hover:bg-gray-700"}`}
+            onClick={() => console.log("View recent notes")}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm mb-2 ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>This Week</p>
+                <p className={`text-3xl font-bold mb-1 ${theme === "light" ? "text-black" : "text-white"}`}>14</p>
+                <p className="text-sm text-purple-500">Recent</p>
+              </div>
+              <Calendar className={`h-8 w-8 ${theme === "light" ? "text-black" : "text-white"}`} />
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
-          <Card className="bg-gray-800">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Total</p>
-                  <p className="text-lg font-bold text-white">67</p>
-                </div>
-                <StickyNote className="h-4 w-4 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Pinned</p>
-                  <p className="text-lg font-bold text-white">8</p>
-                </div>
-                <Pin className="h-4 w-4 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Categories</p>
-                  <p className="text-lg font-bold text-white">12</p>
-                </div>
-                <Tag className="h-4 w-4 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">This Week</p>
-                  <p className="text-lg font-bold text-white">14</p>
-                </div>
-                <Calendar className="h-4 w-4 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <StickyNote className={`h-4 w-4 ${theme === "light" ? "text-gray-600" : "text-gray-400"}`} />
+            <h1 className={`text-sm font-medium ${theme === "light" ? "text-black" : "text-white"}`}>Notes</h1>
+            <span className={`text-xs ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
+              ({filteredNotes.length})
+            </span>
+          </div>
+          <Button
+            size="sm"
+            className={`h-7 text-xs ${theme === "light" ? "bg-gray-900 hover:bg-gray-800 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            New Note
+          </Button>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-6">
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-500" />
+            <Search
+              className={`absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 ${theme === "light" ? "text-gray-500" : "text-gray-500"}`}
+            />
             <Input
               placeholder="Search notes..."
-              className="pl-7 h-8 text-xs bg-gray-800 text-white placeholder-gray-500 border-gray-700"
+              className={`pl-7 h-8 text-xs ${theme === "light" ? "bg-white text-black placeholder-gray-500 border-gray-300" : "bg-gray-800 text-white placeholder-gray-500 border-0"}`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select
-            value={selectedOpportunity}
-            onChange={(e) => setSelectedOpportunity(e.target.value)}
-            className="w-32 h-8 text-xs bg-gray-800 text-white border border-gray-700 rounded px-2"
-          >
-            {opportunities.map((opportunity) => (
-              <option key={opportunity} value={opportunity}>
-                {opportunity}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-24 h-8 text-xs bg-gray-800 text-white border border-gray-700 rounded px-2"
-          >
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
+          <MultiSelect
+            options={opportunityOptions}
+            value={selectedOpportunities}
+            onChange={setSelectedOpportunities}
+            placeholder="Filter by opportunity..."
+            className="w-40"
+          />
+          <MultiSelect
+            options={categoryOptions}
+            value={selectedCategories}
+            onChange={setSelectedCategories}
+            placeholder="Filter by category..."
+            className="w-32"
+          />
           <Button
             variant={showPinnedOnly ? "default" : "outline"}
             size="sm"
             onClick={() => setShowPinnedOnly(!showPinnedOnly)}
-            className={`h-8 text-xs ${
+            className={`h-8 text-xs transition-colors ${
               showPinnedOnly
-                ? "bg-slate-500 hover:bg-slate-600 text-white"
-                : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                ? theme === "light"
+                  ? "bg-gray-900 hover:bg-gray-800 text-white"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+                : theme === "light"
+                  ? "bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+                  : "bg-gray-800 border-0 text-gray-300 hover:bg-gray-700"
             }`}
           >
             <Pin className="h-3 w-3 mr-1" />
@@ -218,65 +238,76 @@ export default function NotesPage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredNotes.map((note) => (
-            <Card key={note.id} className="bg-gray-800 border border-gray-700 hover:border-gray-600 transition-colors">
-              <CardHeader className="pb-2 p-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-sm flex items-center text-white">
+            <div
+              key={note.id}
+              className={`transition-all duration-200 hover:shadow-lg p-8 rounded-lg cursor-pointer ${theme === "light" ? "bg-white border-0 shadow-sm hover:bg-gray-50" : "bg-gray-800 hover:bg-gray-700"}`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className={`text-base font-medium ${theme === "light" ? "text-black" : "text-white"}`}>
                       {note.title}
-                      {note.pinned && <Pin className="h-3 w-3 ml-1 text-yellow-400" />}
-                    </CardTitle>
-                    <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 mt-1 text-xs border">
-                      {note.category}
-                    </Badge>
+                    </h3>
+                    {note.pinned && <Pin className="h-4 w-4 text-yellow-500" />}
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-5 w-5 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-5 w-5 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                  <Badge className="bg-blue-500/20 text-blue-400 border-0 text-sm">{note.category}</Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={`h-8 w-8 p-0 ${theme === "light" ? "text-gray-600 hover:text-black hover:bg-gray-100" : "text-gray-400 hover:text-white hover:bg-gray-600"}`}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={`h-8 w-8 p-0 ${theme === "light" ? "text-gray-600 hover:text-black hover:bg-gray-100" : "text-gray-400 hover:text-white hover:bg-gray-600"}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <p
+                className={`text-sm line-clamp-3 mb-4 leading-relaxed ${theme === "light" ? "text-gray-700" : "text-gray-300"}`}
+              >
+                {note.content}
+              </p>
+
+              {note.opportunity && <p className="text-sm text-blue-400 mb-4">Related to: {note.opportunity}</p>}
+
+              <div className="flex flex-wrap gap-2 mb-4">
+                {note.tags.map((tag) => (
+                  <Badge
+                    key={tag}
+                    className={`border-0 text-sm ${theme === "light" ? "bg-gray-200 text-gray-700 hover:bg-gray-300" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+
+              <div
+                className={`border-t pt-4 text-sm ${theme === "light" ? "border-gray-200 text-gray-500" : "border-gray-700 text-gray-500"}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span className={`${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>{note.author}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <span className={`${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
+                      {note.createdDate}
+                    </span>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-2 p-3 pt-0">
-                <p className="text-xs text-gray-300 line-clamp-3">{note.content}</p>
-
-                {note.opportunity && <p className="text-xs text-blue-400">Related to: {note.opportunity}</p>}
-
-                <div className="flex flex-wrap gap-1">
-                  {note.tags.map((tag) => (
-                    <Badge key={tag} className="bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs border">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-
-                <div className="border-t border-gray-700 pt-2 text-xs text-gray-500">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <User className="h-3 w-3 mr-1" />
-                      <span className="text-gray-400">{note.author}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      <span className="text-gray-400">{note.createdDate}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       </div>
